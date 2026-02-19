@@ -1,0 +1,15 @@
+import SwiftUI
+
+@main
+struct DouayRheimsApp: App {
+    @StateObject private var bibleData = BibleDataManager.shared
+    @StateObject private var bookmarks = BookmarkManager.shared
+
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environmentObject(bibleData)
+                .environmentObject(bookmarks)
+        }
+    }
+}
