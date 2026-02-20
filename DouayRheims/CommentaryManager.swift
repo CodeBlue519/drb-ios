@@ -5,7 +5,6 @@ import Foundation
 enum CommentarySource: String, CaseIterable, Identifiable {
     case haydock = "Haydock"
     case lapide = "Cornelius à Lapide"
-    case douai1609 = "Douai 1609"
 
     var id: String { rawValue }
 
@@ -13,7 +12,6 @@ enum CommentarySource: String, CaseIterable, Identifiable {
         switch self {
         case .haydock: return "haydock"
         case .lapide: return "lapide"
-        case .douai1609: return "douai-1609"
         }
     }
 
@@ -21,7 +19,6 @@ enum CommentarySource: String, CaseIterable, Identifiable {
         switch self {
         case .haydock: return "Haydock"
         case .lapide: return "Lapide"
-        case .douai1609: return "Douai 1609"
         }
     }
 }

@@ -56,7 +56,7 @@ struct SettingsView: View {
                         Text("Show Commentary")
                             .font(Theme.serifBody(16))
                             .foregroundColor(Theme.textPrimary(colorScheme))
-                        Text("Tap a verse to view Haydock, Lapide, and Douai annotations")
+                        Text("Tap a verse to view Haydock and Lapide annotations")
                             .font(Theme.serifBody(13))
                             .foregroundColor(.secondary)
                     }
