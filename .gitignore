@@ -1,0 +1,14 @@
+# Security
+.env
+.secrets/
+*.key
+*.pem
+
+# macOS
+.DS_Store
+
+# iOS / Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
