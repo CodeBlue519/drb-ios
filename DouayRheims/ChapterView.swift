@@ -9,74 +9,132 @@ struct ChapterView: View {
     @EnvironmentObject var settings: SettingsManager
     @EnvironmentObject var commentary: CommentaryManager
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
 
     @State private var selectedVerse: Verse?
+
+    private var isIPad: Bool {
+        horizontalSizeClass == .regular
+    }
 
     var body: some View {
         let verses = bibleData.verses(for: book.name, chapter: chapter)
 
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                // Chapter header
-                Text(book.name)
-                    .font(settings.headerFont)
-                    .foregroundColor(Theme.accent(colorScheme))
-                    .padding(.bottom, 2)
-                Text("Chapter \(chapter)")
-                    .font(settings.subHeaderFont)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 20)
-
-                // Verses
-                ForEach(verses) { verse in
-                    VerseRow(
-                        verse: verse,
-                        hasCommentary: settings.showCommentary && commentary.hasCommentary(
-                            for: verse.abbreviation, chapter: verse.chapter, verse: verse.verse
-                        ),
-                        onTap: {
-                            if settings.showCommentary && commentary.hasCommentary(
-                                for: verse.abbreviation, chapter: verse.chapter, verse: verse.verse
-                            ) {
-                                selectedVerse = verse
-                            }
-                        }
-                    )
-                    .padding(.bottom, 8)
-                }
-
-                // Prev/Next navigation
-                HStack {
-                    if chapter > 1 {
-                        NavigationLink(destination: ChapterView(book: book, chapter: chapter - 1)) {
-                            Label("Chapter \(chapter - 1)", systemImage: "chevron.left")
-                                .font(Theme.serifBody(15))
-                        }
-                    }
-                    Spacer()
-                    if book.chapters.contains(chapter + 1) {
-                        NavigationLink(destination: ChapterView(book: book, chapter: chapter + 1)) {
-                            Label("Chapter \(chapter + 1)", systemImage: "chevron.right")
-                                .font(Theme.serifBody(15))
-                                .environment(\.layoutDirection, .rightToLeft)
-                        }
-                    }
-                }
-                .foregroundColor(Theme.accent(colorScheme))
-                .padding(.top, 24)
-                .padding(.bottom, 16)
+        Group {
+            if isIPad {
+                iPadLayout(verses: verses)
+            } else {
+                iPhoneLayout(verses: verses)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
         }
         .navigationTitle("\(book.abbreviation) \(chapter)")
         .navigationBarTitleDisplayMode(.inline)
         .background(Theme.background(colorScheme))
+    }
+
+    // MARK: - iPhone Layout (sheet)
+
+    @ViewBuilder
+    private func iPhoneLayout(verses: [Verse]) -> some View {
+        ScrollView {
+            versesContent(verses: verses)
+        }
         .sheet(item: $selectedVerse) { verse in
             CommentarySheet(verse: verse)
                 .environmentObject(commentary)
                 .environmentObject(settings)
         }
+    }
+
+    // MARK: - iPad Layout (side panel)
+
+    @ViewBuilder
+    private func iPadLayout(verses: [Verse]) -> some View {
+        HStack(spacing: 0) {
+            ScrollView {
+                versesContent(verses: verses)
+            }
+            .frame(maxWidth: .infinity)
+
+            if let verse = selectedVerse {
+                Divider()
+
+                CommentarySidePanel(verse: verse) {
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        selectedVerse = nil
+                    }
+                }
+                .environmentObject(commentary)
+                .environmentObject(settings)
+                .frame(width: 420)
+                .transition(.move(edge: .trailing).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.25), value: selectedVerse?.id)
+    }
+
+    // MARK: - Shared verses content
+
+    @ViewBuilder
+    private func versesContent(verses: [Verse]) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Chapter header
+            Text(book.name)
+                .font(settings.headerFont)
+                .foregroundColor(Theme.accent(colorScheme))
+                .padding(.bottom, 2)
+            Text("Chapter \(chapter)")
+                .font(settings.subHeaderFont)
+                .foregroundColor(.secondary)
+                .padding(.bottom, 20)
+
+            // Verses — Fix 5: compute hasCommentary once per verse, not twice
+            ForEach(verses) { verse in
+                let verseHasCommentary = settings.showCommentary && commentary.hasCommentary(
+                    for: verse.abbreviation, chapter: verse.chapter, verse: verse.verse
+                )
+                VerseRow(
+                    verse: verse,
+                    isSelected: selectedVerse?.id == verse.id,
+                    hasCommentary: verseHasCommentary,
+                    onTap: {
+                        if verseHasCommentary {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                if selectedVerse?.id == verse.id {
+                                    selectedVerse = nil
+                                } else {
+                                    selectedVerse = verse
+                                }
+                            }
+                        }
+                    }
+                )
+                .padding(.bottom, 8)
+            }
+
+            // Prev/Next navigation
+            HStack {
+                if chapter > 1 {
+                    NavigationLink(destination: ChapterView(book: book, chapter: chapter - 1)) {
+                        Label("Chapter \(chapter - 1)", systemImage: "chevron.left")
+                            .font(Theme.serifBody(15))
+                    }
+                }
+                Spacer()
+                if book.chapters.contains(chapter + 1) {
+                    NavigationLink(destination: ChapterView(book: book, chapter: chapter + 1)) {
+                        Label("Chapter \(chapter + 1)", systemImage: "chevron.right")
+                            .font(Theme.serifBody(15))
+                            .environment(\.layoutDirection, .rightToLeft)
+                    }
+                }
+            }
+            .foregroundColor(Theme.accent(colorScheme))
+            .padding(.top, 24)
+            .padding(.bottom, 16)
+        }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
     }
 }
 
@@ -84,6 +142,7 @@ struct ChapterView: View {
 
 struct VerseRow: View {
     let verse: Verse
+    var isSelected: Bool = false
     var hasCommentary: Bool = false
     var onTap: (() -> Void)? = nil
 
@@ -106,6 +165,12 @@ struct VerseRow: View {
 
             Spacer(minLength: 0)
         }
+        .padding(.vertical, 2)
+        .padding(.horizontal, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? Theme.accent(colorScheme).opacity(0.08) : Color.clear)
+        )
         .contentShape(Rectangle())
         .onTapGesture {
             onTap?()
@@ -149,7 +214,105 @@ struct VerseRow: View {
     }
 }
 
-// MARK: - Commentary Sheet
+// MARK: - Commentary Content (Fix 5 — shared between Sheet and SidePanel)
+
+/// Shared source-tab selector + commentary text body.
+/// Used by both CommentarySheet (iPhone) and CommentarySidePanel (iPad).
+struct CommentaryContent: View {
+    let verse: Verse
+    @Binding var selectedSource: CommentarySource?
+    let availableSources: [CommentarySource]
+    /// Base font size multiplier — sheet uses larger sizes, panel uses smaller
+    let fontScale: CGFloat
+
+    @EnvironmentObject var commentary: CommentaryManager
+    @EnvironmentObject var settings: SettingsManager
+    @Environment(\.colorScheme) var colorScheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            sourceTabs
+            commentaryBody
+        }
+    }
+
+    // MARK: Source tabs
+
+    @ViewBuilder
+    private var sourceTabs: some View {
+        if availableSources.count > 1 {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 0) {
+                    ForEach(availableSources) { source in
+                        Button {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedSource = source
+                            }
+                        } label: {
+                            Text(source.shortName)
+                                .font(Theme.serifBody(14 * fontScale))
+                                .foregroundColor(
+                                    (selectedSource ?? availableSources.first) == source
+                                        ? Theme.accent(colorScheme)
+                                        : .secondary
+                                )
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                                .overlay(alignment: .bottom) {
+                                    if (selectedSource ?? availableSources.first) == source {
+                                        Rectangle()
+                                            .fill(Theme.accent(colorScheme))
+                                            .frame(height: 2)
+                                    }
+                                }
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
+            Divider()
+        }
+    }
+
+    // MARK: Commentary body
+
+    private var commentaryBody: some View {
+        ScrollView {
+            let activeSource = selectedSource ?? availableSources.first
+            if let source = activeSource {
+                let sourceEntries = commentary.commentariesBySource(
+                    for: verse.abbreviation, chapter: verse.chapter, verse: verse.verse
+                ).first(where: { $0.source == source })?.entries ?? []
+
+                VStack(alignment: .leading, spacing: 12) {
+                    // Source label with description
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(source.rawValue)
+                            .font(Theme.serifBold(CGFloat(settings.fontSize) * 0.75 * fontScale))
+                            .foregroundColor(Theme.goldAccent(colorScheme))
+                        Text(source.description)
+                            .font(.system(size: 11 * fontScale))
+                            .foregroundColor(.secondary)
+                    }
+                    .padding(.top, 4)
+
+                    ForEach(sourceEntries) { entry in
+                        Text(entry.text)
+                            .font(.custom("Georgia", size: CGFloat(settings.fontSize) * 0.82 * fontScale))
+                            .foregroundColor(Theme.textPrimary(colorScheme))
+                            .lineSpacing(CGFloat(settings.lineSpacing) * 0.8)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .textSelection(.enabled)
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+}
+
+// MARK: - Commentary Sheet (iPhone)
 
 struct CommentarySheet: View {
     let verse: Verse
@@ -168,87 +331,17 @@ struct CommentarySheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 0) {
-                // Verse text header
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(verse.reference)
-                        .font(Theme.serifBold(CGFloat(settings.fontSize * 0.85)))
-                        .foregroundColor(Theme.accent(colorScheme))
-
-                    Text(verse.text)
-                        .font(.custom("Georgia-Italic", size: CGFloat(settings.fontSize * 0.85)))
-                        .foregroundColor(Theme.textPrimary(colorScheme))
-                        .lineSpacing(3)
-                }
-                .padding(.horizontal, 20)
-                .padding(.top, 16)
-                .padding(.bottom, 12)
-
-                Divider()
-                    .padding(.horizontal, 20)
-
-                // Source tabs
-                if availableSources.count > 1 {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 0) {
-                            ForEach(availableSources) { source in
-                                Button {
-                                    withAnimation(.easeInOut(duration: 0.2)) {
-                                        selectedSource = source
-                                    }
-                                } label: {
-                                    Text(source.shortName)
-                                        .font(Theme.serifBody(14))
-                                        .foregroundColor(
-                                            (selectedSource ?? availableSources.first) == source
-                                                ? Theme.accent(colorScheme)
-                                                : .secondary
-                                        )
-                                        .padding(.horizontal, 16)
-                                        .padding(.vertical, 10)
-                                        .overlay(alignment: .bottom) {
-                                            if (selectedSource ?? availableSources.first) == source {
-                                                Rectangle()
-                                                    .fill(Theme.accent(colorScheme))
-                                                    .frame(height: 2)
-                                            }
-                                        }
-                                }
-                            }
-                        }
-                        .padding(.horizontal, 12)
-                    }
-
-                    Divider()
-                }
-
-                // Commentary text
-                ScrollView {
-                    let activeSource = selectedSource ?? availableSources.first
-                    if let source = activeSource {
-                        let entries = commentary.commentariesBySource(
-                            for: verse.abbreviation, chapter: verse.chapter, verse: verse.verse
-                        ).first(where: { $0.source == source })?.entries ?? []
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            if availableSources.count == 1 {
-                                Text(source.rawValue)
-                                    .font(Theme.serifBold(CGFloat(settings.fontSize * 0.75)))
-                                    .foregroundColor(Theme.goldAccent(colorScheme))
-                                    .padding(.top, 4)
-                            }
-
-                            ForEach(entries) { entry in
-                                Text(entry.text)
-                                    .font(.custom("Georgia", size: CGFloat(settings.fontSize * 0.82)))
-                                    .foregroundColor(Theme.textPrimary(colorScheme))
-                                    .lineSpacing(CGFloat(settings.lineSpacing * 0.8))
-                                    .fixedSize(horizontal: false, vertical: true)
-                            }
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 12)
-                    }
-                }
+                commentaryHeader
+                Divider().padding(.horizontal, 20)
+                // Fix 5: shared view handles source tabs + body
+                CommentaryContent(
+                    verse: verse,
+                    selectedSource: $selectedSource,
+                    availableSources: availableSources,
+                    fontScale: 1.0
+                )
+                .environmentObject(commentary)
+                .environmentObject(settings)
             }
             .background(Theme.background(colorScheme))
             .navigationBarTitleDisplayMode(.inline)
@@ -265,5 +358,91 @@ struct CommentarySheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    private var commentaryHeader: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(verse.reference)
+                .font(Theme.serifBold(CGFloat(settings.fontSize * 0.85)))
+                .foregroundColor(Theme.accent(colorScheme))
+
+            Text(verse.text)
+                .font(.custom("Georgia-Italic", size: CGFloat(settings.fontSize * 0.85)))
+                .foregroundColor(Theme.textPrimary(colorScheme))
+                .lineSpacing(3)
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 16)
+        .padding(.bottom, 12)
+    }
+}
+
+// MARK: - Commentary Side Panel (iPad)
+
+struct CommentarySidePanel: View {
+    let verse: Verse
+    let onDismiss: () -> Void
+
+    @EnvironmentObject var commentary: CommentaryManager
+    @EnvironmentObject var settings: SettingsManager
+    @Environment(\.colorScheme) var colorScheme
+
+    @State private var selectedSource: CommentarySource?
+
+    private var availableSources: [CommentarySource] {
+        commentary.availableSources(for: verse.abbreviation, chapter: verse.chapter, verse: verse.verse)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Header with dismiss
+            HStack {
+                Text("Commentary")
+                    .font(Theme.serifBold(16))
+                    .foregroundColor(Theme.textPrimary(colorScheme))
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 20))
+                        .foregroundColor(.secondary)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+
+            Divider()
+
+            // Verse reference
+            VStack(alignment: .leading, spacing: 4) {
+                Text(verse.reference)
+                    .font(Theme.serifBold(CGFloat(settings.fontSize * 0.8)))
+                    .foregroundColor(Theme.accent(colorScheme))
+
+                Text(verse.text)
+                    .font(.custom("Georgia-Italic", size: CGFloat(settings.fontSize * 0.78)))
+                    .foregroundColor(Theme.textPrimary(colorScheme).opacity(0.8))
+                    .lineSpacing(2)
+                    .lineLimit(3)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+
+            Divider()
+
+            // Fix 5: shared view handles source tabs + body (slightly smaller scale for panel)
+            CommentaryContent(
+                verse: verse,
+                selectedSource: $selectedSource,
+                availableSources: availableSources,
+                fontScale: 0.95
+            )
+            .environmentObject(commentary)
+            .environmentObject(settings)
+        }
+        .background(Theme.background(colorScheme).opacity(0.98))
+        .onChange(of: verse.id) { _ in
+            selectedSource = nil
+        }
     }
 }

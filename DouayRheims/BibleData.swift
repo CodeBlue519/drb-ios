@@ -10,6 +10,7 @@ struct Verse: Identifiable, Hashable {
     let chapter: Int
     let verse: Int
     let text: String
+    let lowercasedText: String  // Fix 3: precomputed at parse time, zero alloc at search time
 
     var reference: String {
         "\(bookName) \(chapter):\(verse)"
@@ -44,16 +45,46 @@ final class BibleDataManager: ObservableObject {
     @Published private(set) var isLoaded = false
 
     private var allVerses: [Verse] = []
-    private var versesByBook: [String: [Verse]] = [:]
+    // Fix 2: Two-level index — O(1) chapter lookup instead of O(n) filter
+    private var verseIndex: [String: [Int: [Verse]]] = [:]
+    private var verseById: [String: Verse] = [:]
 
     private init() {
-        loadData()
+        // Fix 1: Load off the main thread — fire-and-forget Task on @MainActor,
+        // actual CPU work runs in a detached Task on a background thread.
+        Task {
+            await loadDataAsync()
+        }
     }
 
-    private func loadData() {
+    // MARK: - Async Load (Fix 1)
+
+    private func loadDataAsync() async {
+        let result = await Task.detached(priority: .userInitiated) {
+            BibleDataManager.parseData()
+        }.value
+
+        // Back on @MainActor — safe to publish
+        self.allVerses = result.verses
+        self.verseIndex = result.verseIndex
+        self.verseById = result.verseById
+        self.books = result.books
+        self.isLoaded = true
+    }
+
+    // MARK: - Background parse (runs off main thread)
+
+    private struct LoadResult {
+        let verses: [Verse]
+        let verseIndex: [String: [Int: [Verse]]]
+        let verseById: [String: Verse]
+        let books: [Book]
+    }
+
+    private static func parseData() -> LoadResult {
         guard let url = Bundle.main.url(forResource: "drb", withExtension: "tsv"),
               let data = try? String(contentsOf: url, encoding: .utf8) else {
-            return
+            return LoadResult(verses: [], verseIndex: [:], verseById: [:], books: [])
         }
 
         var verses: [Verse] = []
@@ -78,7 +109,8 @@ final class BibleDataManager: ObservableObject {
                 bookOrder: bookOrder,
                 chapter: chapter,
                 verse: verseNum,
-                text: text
+                text: text,
+                lowercasedText: text.lowercased()  // Fix 3: one alloc per verse, at parse time
             )
             verses.append(verse)
 
@@ -90,13 +122,21 @@ final class BibleDataManager: ObservableObject {
             }
         }
 
-        allVerses = verses
+        // Fix 2: Build two-level index and id→verse map in one pass
+        var verseIndex: [String: [Int: [Verse]]] = [:]
+        var verseById: [String: Verse] = [:]
         for verse in verses {
-            versesByBook[verse.bookName, default: []].append(verse)
+            verseIndex[verse.bookName, default: [:]][verse.chapter, default: []].append(verse)
+            verseById[verse.id] = verse
+        }
+        // Verses arrive in order from the TSV but sort within each chapter to be safe
+        for bookName in verseIndex.keys {
+            for chapter in verseIndex[bookName]!.keys {
+                verseIndex[bookName]![chapter]!.sort { $0.verse < $1.verse }
+            }
         }
 
-        // New Testament starts at Matthew (book 47)
-        books = bookChapters.map { name, info in
+        let books = bookChapters.map { name, info in
             Book(
                 id: name,
                 name: name,
@@ -107,21 +147,23 @@ final class BibleDataManager: ObservableObject {
             )
         }.sorted { $0.order < $1.order }
 
-        isLoaded = true
+        return LoadResult(verses: verses, verseIndex: verseIndex, verseById: verseById, books: books)
     }
 
+    // MARK: - Public API
+
+    // Fix 2: O(1) chapter lookup — no more O(n) filter through the full book
     func verses(for book: String, chapter: Int) -> [Verse] {
-        (versesByBook[book] ?? [])
-            .filter { $0.chapter == chapter }
-            .sorted { $0.verse < $1.verse }
+        verseIndex[book]?[chapter] ?? []
     }
 
+    // Fix 3: Use precomputed lowercasedText — no per-search String allocation
     func search(_ query: String, limit: Int = 100) -> [Verse] {
         guard !query.isEmpty else { return [] }
         let lowered = query.lowercased()
         var results: [Verse] = []
         for verse in allVerses {
-            if verse.text.lowercased().contains(lowered) ||
+            if verse.lowercasedText.contains(lowered) ||
                verse.bookName.lowercased().contains(lowered) {
                 results.append(verse)
                 if results.count >= limit { break }
@@ -130,7 +172,8 @@ final class BibleDataManager: ObservableObject {
         return results
     }
 
+    // Fix 2: O(1) bookmark lookup — was allVerses.first { $0.id == id }
     func verse(for id: String) -> Verse? {
-        allVerses.first { $0.id == id }
+        verseById[id]
     }
 }

@@ -1,11 +1,33 @@
 import SwiftUI
 
+// MARK: - Loading View (Fix 1)
+// Simple 1998-style loading screen shown while TSV data is parsed off the main thread.
+
+struct LoadingView: View {
+    var body: some View {
+        VStack {
+            Spacer()
+            Text("Loading...")
+                .font(.system(size: 18, weight: .regular, design: .serif))
+                .foregroundColor(.secondary)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+// MARK: - Root View
+
 struct ContentView: View {
+    @EnvironmentObject var bibleData: BibleDataManager
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.colorScheme) var colorScheme
 
     var body: some View {
-        if horizontalSizeClass == .regular {
+        if !bibleData.isLoaded {
+            // Fix 1: Show loading screen while async parse runs off main thread
+            LoadingView()
+        } else if horizontalSizeClass == .regular {
             iPadContentView()
         } else {
             iPhoneContentView()

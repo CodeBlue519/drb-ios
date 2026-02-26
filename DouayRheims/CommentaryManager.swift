@@ -5,6 +5,7 @@ import Foundation
 enum CommentarySource: String, CaseIterable, Identifiable {
     case haydock = "Haydock"
     case lapide = "Cornelius à Lapide"
+    case douai1609 = "Douai 1609"
 
     var id: String { rawValue }
 
@@ -12,6 +13,7 @@ enum CommentarySource: String, CaseIterable, Identifiable {
         switch self {
         case .haydock: return "haydock"
         case .lapide: return "lapide"
+        case .douai1609: return "douai-1609"
         }
     }
 
@@ -19,6 +21,15 @@ enum CommentarySource: String, CaseIterable, Identifiable {
         switch self {
         case .haydock: return "Haydock"
         case .lapide: return "Lapide"
+        case .douai1609: return "Douai"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .haydock: return "Haydock Catholic Bible Commentary"
+        case .lapide: return "Cornelius à Lapide (New Testament)"
+        case .douai1609: return "Original Douai Annotations (1609)"
         }
     }
 }
@@ -42,23 +53,57 @@ final class CommentaryManager: ObservableObject {
 
     // Key: "Abbrev:Chapter:Verse" -> [CommentaryEntry]
     private var entries: [String: [CommentaryEntry]] = [:]
+
+    // Fix 4: Track which sources have been loaded (or are being loaded)
+    private var loadedSources: Set<CommentarySource> = []
+    private var loadingInProgress: Set<CommentarySource> = []
+
     @Published private(set) var isLoaded = false
 
     private init() {
-        loadAll()
-    }
-
-    private func loadAll() {
-        for source in CommentarySource.allCases {
-            loadSource(source)
+        // Fix 1 + 4: Load only the small sources (Douai ~3k lines, Lapide ~2.4k lines)
+        // eagerly in the background. Haydock (13MB / ~36k lines) loads lazily on first access.
+        Task {
+            await loadSourceInBackground(.douai1609)
+            await loadSourceInBackground(.lapide)
+            isLoaded = true
         }
-        isLoaded = true
     }
 
-    private func loadSource(_ source: CommentarySource) {
+    // MARK: - Background loading
+
+    private func loadSourceInBackground(_ source: CommentarySource) async {
+        guard !loadedSources.contains(source) && !loadingInProgress.contains(source) else { return }
+        loadingInProgress.insert(source)
+
+        let parsed = await Task.detached(priority: .utility) {
+            CommentaryManager.parseSource(source)
+        }.value
+
+        // Back on @MainActor
+        for (key, newEntries) in parsed {
+            entries[key, default: []].append(contentsOf: newEntries)
+        }
+        loadedSources.insert(source)
+        loadingInProgress.remove(source)
+    }
+
+    // Fix 4: Trigger Haydock/Lapide load on first access if not yet loaded
+    private func ensureLoaded(_ source: CommentarySource) {
+        guard !loadedSources.contains(source) && !loadingInProgress.contains(source) else { return }
+        Task {
+            await loadSourceInBackground(source)
+        }
+    }
+
+    // MARK: - Background TSV parse (runs off main thread)
+
+    private static func parseSource(_ source: CommentarySource) -> [String: [CommentaryEntry]] {
+        var result: [String: [CommentaryEntry]] = [:]
+
         guard let url = Bundle.main.url(forResource: source.filename, withExtension: "tsv"),
               let data = try? String(contentsOf: url, encoding: .utf8) else {
-            return
+            return result
         }
 
         let lines = data.components(separatedBy: .newlines)
@@ -71,7 +116,9 @@ final class CommentaryManager: ObservableObject {
             let text = parts[2]
 
             // Skip header row
-            if index == 0 && (abbrev == "Book" || abbrev == "book") { continue }
+            if index == 0 && (abbrev.lowercased() == "book" || abbrev.lowercased() == "bookabbrev") {
+                continue
+            }
 
             // Parse "Chapter:Verse"
             let refParts = verseRef.components(separatedBy: ":")
@@ -88,12 +135,18 @@ final class CommentaryManager: ObservableObject {
             )
 
             let key = "\(abbrev):\(chapter):\(verse)"
-            entries[key, default: []].append(entry)
+            result[key, default: []].append(entry)
         }
+
+        return result
     }
 
-    /// Look up commentaries for a verse by book abbreviation, chapter, and verse number
+    // MARK: - Public API
+
+    /// Look up commentaries for a verse. Triggers lazy load of Haydock on first call.
     func commentaries(for abbreviation: String, chapter: Int, verse: Int) -> [CommentaryEntry] {
+        // Fix 4: trigger Haydock load if not ready yet
+        ensureLoaded(.haydock)
         let key = "\(abbreviation):\(chapter):\(verse)"
         return entries[key] ?? []
     }
@@ -111,10 +164,11 @@ final class CommentaryManager: ObservableObject {
         return result
     }
 
-    /// Check if any commentary exists for a verse
+    /// Check if any commentary exists for a verse. Triggers lazy load of Haydock on first call.
     func hasCommentary(for abbreviation: String, chapter: Int, verse: Int) -> Bool {
+        ensureLoaded(.haydock)
         let key = "\(abbreviation):\(chapter):\(verse)"
-        return entries[key] != nil && !(entries[key]!.isEmpty)
+        return !(entries[key]?.isEmpty ?? true)
     }
 
     /// Available sources for a specific verse
