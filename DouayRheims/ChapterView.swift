@@ -441,7 +441,7 @@ struct CommentarySidePanel: View {
             .environmentObject(settings)
         }
         .background(Theme.background(colorScheme).opacity(0.98))
-        .onChange(of: verse.id) { _ in
+        .onChange(of: verse.id) {
             selectedSource = nil
         }
     }
