@@ -81,7 +81,7 @@ final class BibleDataManager: ObservableObject {
         let books: [Book]
     }
 
-    private static func parseData() -> LoadResult {
+    nonisolated private static func parseData() -> LoadResult {
         guard let url = Bundle.main.url(forResource: "drb", withExtension: "tsv"),
               let data = try? String(contentsOf: url, encoding: .utf8) else {
             return LoadResult(verses: [], verseIndex: [:], verseById: [:], books: [])
