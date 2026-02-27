@@ -98,7 +98,7 @@ final class CommentaryManager: ObservableObject {
 
     // MARK: - Background TSV parse (runs off main thread)
 
-    private static func parseSource(_ source: CommentarySource) -> [String: [CommentaryEntry]] {
+    nonisolated private static func parseSource(_ source: CommentarySource) -> [String: [CommentaryEntry]] {
         var result: [String: [CommentaryEntry]] = [:]
 
         guard let url = Bundle.main.url(forResource: source.filename, withExtension: "tsv"),
