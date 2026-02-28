@@ -17,6 +17,7 @@ struct BookmarksView: View {
                     Image(systemName: "bookmark")
                         .font(.system(size: 48))
                         .foregroundColor(Theme.accent(colorScheme).opacity(0.4))
+                        .accessibilityHidden(true)
                     Text("No Bookmarks Yet")
                         .font(Theme.serifBold(20))
                         .foregroundColor(Theme.textPrimary(colorScheme))

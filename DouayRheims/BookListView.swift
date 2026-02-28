@@ -17,7 +17,7 @@ struct BookListView: View {
                                         .foregroundColor(Theme.textPrimary(colorScheme))
                                     if Theme.deuterocanonical.contains(book.name) {
                                         Text("Deuterocanonical")
-                                            .font(.system(size: 11, weight: .medium))
+                                            .font(.caption2.weight(.medium))
                                             .foregroundColor(Theme.goldAccent(colorScheme))
                                     }
                                 }

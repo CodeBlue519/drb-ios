@@ -10,6 +10,7 @@ struct ChapterView: View {
     @EnvironmentObject var commentary: CommentaryManager
     @Environment(\.colorScheme) var colorScheme
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
 
     @State private var selectedVerse: Verse?
 
@@ -60,8 +61,12 @@ struct ChapterView: View {
                 Divider()
 
                 CommentarySidePanel(verse: verse) {
-                    withAnimation(.easeInOut(duration: 0.25)) {
+                    if reduceMotion {
                         selectedVerse = nil
+                    } else {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            selectedVerse = nil
+                        }
                     }
                 }
                 .environmentObject(commentary)
@@ -70,7 +75,7 @@ struct ChapterView: View {
                 .transition(.move(edge: .trailing).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: selectedVerse?.id)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: selectedVerse?.id)
     }
 
     // MARK: - Shared verses content
@@ -99,11 +104,19 @@ struct ChapterView: View {
                     hasCommentary: verseHasCommentary,
                     onTap: {
                         if verseHasCommentary {
-                            withAnimation(.easeInOut(duration: 0.2)) {
+                            if reduceMotion {
                                 if selectedVerse?.id == verse.id {
                                     selectedVerse = nil
                                 } else {
                                     selectedVerse = verse
+                                }
+                            } else {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    if selectedVerse?.id == verse.id {
+                                        selectedVerse = nil
+                                    } else {
+                                        selectedVerse = verse
+                                    }
                                 }
                             }
                         }
@@ -202,15 +215,20 @@ struct VerseRow: View {
                         .font(.system(size: 9))
                         .foregroundColor(Theme.goldAccent(colorScheme))
                         .offset(x: bookmarks.isBookmarked(verse.id) ? -8 : 4)
+                        .accessibilityHidden(true)
                 }
                 if bookmarks.isBookmarked(verse.id) {
                     Image(systemName: "bookmark.fill")
                         .font(.system(size: 10))
                         .foregroundColor(Theme.accent(colorScheme))
                         .offset(x: 4)
+                        .accessibilityHidden(true)
                 }
             }
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(verse.reference). \(verse.text)\(bookmarks.isBookmarked(verse.id) ? ". Bookmarked" : "")")
+        .accessibilityHint(hasCommentary ? "Tap to view commentary" : "")
     }
 }
 
@@ -228,6 +246,7 @@ struct CommentaryContent: View {
     @EnvironmentObject var commentary: CommentaryManager
     @EnvironmentObject var settings: SettingsManager
     @Environment(\.colorScheme) var colorScheme
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -245,8 +264,12 @@ struct CommentaryContent: View {
                 HStack(spacing: 0) {
                     ForEach(availableSources) { source in
                         Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
+                            if reduceMotion {
                                 selectedSource = source
+                            } else {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    selectedSource = source
+                                }
                             }
                         } label: {
                             Text(source.shortName)
@@ -291,7 +314,7 @@ struct CommentaryContent: View {
                             .font(Theme.serifBold(CGFloat(settings.fontSize) * 0.75 * fontScale))
                             .foregroundColor(Theme.goldAccent(colorScheme))
                         Text(source.description)
-                            .font(.system(size: 11 * fontScale))
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                     .padding(.top, 4)
@@ -353,6 +376,7 @@ struct CommentarySheet: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary)
                     }
+                    .accessibilityLabel("Close commentary")
                 }
             }
         }
@@ -406,6 +430,7 @@ struct CommentarySidePanel: View {
                         .font(.system(size: 20))
                         .foregroundColor(.secondary)
                 }
+                .accessibilityLabel("Close commentary")
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)

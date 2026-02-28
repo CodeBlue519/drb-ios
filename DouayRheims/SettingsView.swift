@@ -12,11 +12,14 @@ struct SettingsView: View {
                         Text("A")
                             .font(.custom("Georgia", size: 14))
                             .foregroundColor(.secondary)
+                            .accessibilityHidden(true)
                         Slider(value: $settings.fontSize, in: 14...28, step: 1)
                             .tint(Theme.accent(colorScheme))
+                            .accessibilityLabel("Text size")
                         Text("A")
                             .font(.custom("Georgia", size: 28))
                             .foregroundColor(.secondary)
+                            .accessibilityHidden(true)
                     }
 
                     // Preview
@@ -43,10 +46,13 @@ struct SettingsView: View {
                 HStack {
                     Image(systemName: "text.alignleft")
                         .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
                     Slider(value: $settings.lineSpacing, in: 2...12, step: 1)
                         .tint(Theme.accent(colorScheme))
+                        .accessibilityLabel("Line spacing")
                     Image(systemName: "line.3.horizontal")
                         .foregroundColor(.secondary)
+                        .accessibilityHidden(true)
                 }
             }
 

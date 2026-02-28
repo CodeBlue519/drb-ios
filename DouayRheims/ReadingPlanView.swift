@@ -42,6 +42,7 @@ struct ReadingPlanView: View {
             Image(systemName: "calendar.badge.clock")
                 .font(.system(size: 56))
                 .foregroundColor(Theme.accent(colorScheme).opacity(0.6))
+                .accessibilityHidden(true)
 
             Text("Read the Bible in a Year")
                 .font(Theme.serifBold(22))
@@ -98,6 +99,7 @@ struct ReadingPlanView: View {
                         if completedDays.contains(currentDayNumber) {
                             Image(systemName: "checkmark.circle.fill")
                                 .foregroundColor(.green)
+                                .accessibilityLabel("Completed")
                         }
                     }
 
@@ -138,8 +140,9 @@ struct ReadingPlanView: View {
                             Spacer()
                             if completedDays.contains(item.day) {
                                 Image(systemName: "checkmark.circle.fill")
-                                    .font(.system(size: 14))
+                                    .font(.caption)
                                     .foregroundColor(.green)
+                                    .accessibilityLabel("Completed")
                             }
                         }
                         Text(item.passages.joined(separator: ", "))

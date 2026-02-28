@@ -22,6 +22,7 @@ struct ChapterListView: View {
                             )
                             .foregroundColor(Theme.textPrimary(colorScheme))
                     }
+                    .accessibilityLabel("Chapter \(chapter)")
                 }
             }
             .padding()
