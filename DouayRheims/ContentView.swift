@@ -8,7 +8,7 @@ struct LoadingView: View {
         VStack {
             Spacer()
             Text("Loading...")
-                .font(.system(size: 18, weight: .regular, design: .serif))
+                .font(.system(.body, design: .serif))
                 .foregroundColor(.secondary)
             Spacer()
         }
@@ -122,7 +122,7 @@ struct iPadContentView: View {
                                         .foregroundColor(Theme.textPrimary(colorScheme))
                                     if Theme.deuterocanonical.contains(book.name) {
                                         Text("Deuterocanonical")
-                                            .font(.system(size: 10, weight: .medium))
+                                            .font(.caption2.weight(.medium))
                                             .foregroundColor(Theme.goldAccent(colorScheme))
                                     }
                                 }
@@ -164,6 +164,7 @@ struct iPadContentView: View {
                             Image(systemName: "book.closed")
                                 .font(.system(size: 56))
                                 .foregroundColor(Theme.accent(colorScheme).opacity(0.4))
+                                .accessibilityHidden(true)
                             Text("Select a book to begin reading")
                                 .font(Theme.serifItalic(18))
                                 .foregroundColor(.secondary)
