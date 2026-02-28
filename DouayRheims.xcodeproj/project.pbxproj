@@ -26,6 +26,7 @@
 		A1000017 /* haydock.tsv in Resources */ = {isa = PBXBuildFile; fileRef = A2000017; };
 		A1000018 /* lapide.tsv in Resources */ = {isa = PBXBuildFile; fileRef = A2000018; };
 		A1000019 /* douai-1609.tsv in Resources */ = {isa = PBXBuildFile; fileRef = A2000019; };
+		A1000020 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A2000020; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -48,6 +49,7 @@
 		A2000017 /* haydock.tsv */ = {isa = PBXFileReference; lastKnownFileType = text; path = haydock.tsv; sourceTree = "<group>"; };
 		A2000018 /* lapide.tsv */ = {isa = PBXFileReference; lastKnownFileType = text; path = lapide.tsv; sourceTree = "<group>"; };
 		A2000019 /* douai-1609.tsv */ = {isa = PBXFileReference; lastKnownFileType = text; path = "douai-1609.tsv"; sourceTree = "<group>"; };
+		A2000020 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		A3000001 /* DouayRheims.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DouayRheims.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -92,6 +94,7 @@
 				A2000018 /* lapide.tsv */,
 				A2000019 /* douai-1609.tsv */,
 				A2000003 /* Assets.xcassets */,
+				A2000020 /* LaunchScreen.storyboard */,
 			);
 			path = DouayRheims;
 			sourceTree = "<group>";
@@ -167,6 +170,7 @@
 				A1000017 /* haydock.tsv in Resources */,
 				A1000018 /* lapide.tsv in Resources */,
 				A1000019 /* douai-1609.tsv in Resources */,
+				A1000020 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -326,7 +330,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Douay-Rheims";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -354,7 +358,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = "Douay-Rheims";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
